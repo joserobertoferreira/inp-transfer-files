@@ -1,5 +1,23 @@
 {
   "cSpell.words": [
-    "paramiko"
+    "APLSTD",
+    "basenames",
+    "BPRNAM",
+    "BPRNUM",
+    "DRTINP",
+    "DRTOUT",
+    "ENAFLG",
+    "FTPINP",
+    "FTPMOD",
+    "FTPOUT",
+    "FTPPSW",
+    "FTPTYP",
+    "FTPURL",
+    "FTPUSR",
+    "LANCHP",
+    "LANMES",
+    "LANNUM",
+    "paramiko",
+    "ZEDIPAR"
   ]
 }
