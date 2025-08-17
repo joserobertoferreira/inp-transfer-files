@@ -14,6 +14,7 @@ USERNAME = str(config('DB_USERNAME', default='', cast=str))
 PASSWORD = str(config('DB_PASSWORD', default='', cast=str))
 PORT = int(config('DB_PORT', default=1433, cast=int))
 
+
 # Debug mode
 DEBUG = bool(config('DEBUG', default=False, cast=bool))
 
@@ -29,19 +30,7 @@ LOG_ERROR_FILENAME = 'app_error.log'
 LOG_ERROR_FILE_LEVEL = 'ERROR'
 
 # SFTP settings
-SFTP_HOST = config('SFTP_HOST', default='localhost', cast=str)
-SFTP_PORT = config('SFTP_PORT', default=22, cast=int)
-SFTP_USER = config('SFTP_USER', default='', cast=str)
-SFTP_PASSWORD = config('SFTP_PASSWORD', default='', cast=str)
-
-SFTP_SYNC_BASE_PATH = str(config('SFTP_SYNC_BASE_PATH', default='/', cast=str))
-
-_template = str(config('LOCAL_EXPORT_PATH', cast=str))
-LOCAL_EXPORT_PATH = _template.format(schema=SCHEMA)
-_template = str(config('LOCAL_IMPORT_PATH', cast=str))
-LOCAL_IMPORT_PATH = _template.format(schema=SCHEMA)
-_template = str(config('LOCAL_ARCHIVE_PATH', cast=str))
-LOCAL_ARCHIVE_PATH = _template.format(schema=SCHEMA)
+STANDARD_FOLDER = str(config('STANDARD_FOLDER', default='/caminho/padrao/se/nao/definido'))
 
 # Sage X3 database table settings
 DEFAULT_LEGACY_DATE = date(1753, 1, 1)

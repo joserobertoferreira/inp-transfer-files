@@ -16,12 +16,12 @@ class SftpManager:
     As credenciais são passadas durante a inicialização.
     """
 
-    def __init__(self, host: str, port: int, user: str, password: str):
+    def __init__(self, host: str, user: str, password: str, port: Optional[int] = None):
         """
         Inicializa o gerenciador com as configurações de um fornecedor específico.
         """
         self.hostname = host
-        self.port = port
+        self.port = port or 22
         self.username = user
         self.password = password
 

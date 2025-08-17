@@ -11,12 +11,27 @@ class FtpManager:
     Gerencia a conexão e as operações com um servidor FTP específico.
     """
 
-    def __init__(self, host: str, port: int, user: str, password: str):
+    def __init__(self, host: str, user: str, password: str, port: Optional[int] = None, binary_mode: bool = False):
+        """
+        Inicializa o gerenciador.
+
+        Args:
+            host (str): O hostname ou IP do servidor.
+            user (str): O nome de utilizador.
+            password (str): A senha.
+            port (int, optional): A porta. Defaults para 21 se None.
+            binary_mode (bool, optional): Se True, usa transferências binárias. Defaults para False (ASCII).
+        """
         self.hostname = host
-        self.port = port if port else 21  # Porta padrão do FTP é 21
+        self.port = port or 21  # Usa a porta 21 se for None ou 0
         self.username = user
         self.password = password
         self.ftp: Optional[FTP] = None
+
+        # Guardar o estado do modo de transferência
+        self.binary_mode = binary_mode
+        if self.binary_mode:
+            logger.debug(f"FtpManager para '{self.hostname}' configurado para usar o modo BINÁRIO.")
 
     def __enter__(self):
         try:

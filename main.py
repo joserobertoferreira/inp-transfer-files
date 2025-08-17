@@ -2,6 +2,7 @@ import logging
 
 from src.config.logging import setup_logging
 from src.services.provider_service import get_active_providers
+from src.services.transfer_service import process_provider_transfer
 
 # Configura o logging assim que a aplicação inicia
 setup_logging()
@@ -24,15 +25,7 @@ def main():
     # Por enquanto, apenas imprimimos os dados para verificar se funcionou
     logger.info('Fornecedores carregados com sucesso:')
     for provider in providers:
-        # Imprimimos sem a senha por segurança
-        provider_info_safe = provider.copy()
-        provider_info_safe['password'] = '********'
-        logger.info(f'-> {provider_info_safe}')
-
-    # Próximos passos (Fase 3):
-    # - Iterar sobre cada 'provider'
-    # - Instanciar o cliente correto (FTP ou SFTP) com as credenciais
-    # - Executar a lógica de transferência
+        process_provider_transfer(provider)
 
 
 if __name__ == '__main__':

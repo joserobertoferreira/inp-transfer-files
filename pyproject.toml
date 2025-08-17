@@ -7,9 +7,13 @@ requires-python = ">=3.12"
 dependencies = [
     "paramiko>=4.0.0",
     "pymssql>=2.3.7",
+    "python-dateutil>=2.9.0.post0",
     "python-decouple>=3.8",
     "sqlalchemy>=2.0.43",
 ]
+
+[dependency-groups]
+dev = ["sqlacodegen>=3.0.0"]
 
 [tool.ruff]
 line-length = 120

@@ -1,0 +1,6 @@
+2025-08-17 15:29:12,229 - CRITICAL - src.services.transfer_service - Ocorreu um erro crítico não tratado durante o processamento do fornecedor 1526.
+Traceback (most recent call last):
+  File "d:\Python\Sage\INP\transfer-files\src\services\transfer_service.py", line 55, in process_provider_transfer
+    with ManagerClass(
+         ^^^^^^^^^^^^^
+TypeError: FtpManager.__init__() got an unexpected keyword argument 'binary_mode'
