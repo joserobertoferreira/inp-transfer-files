@@ -1,10 +1,11 @@
 import logging
 
+from src.config.connection_ftp import FtpConfig
 from src.models.models import EdiPartners
 from src.services.strategies import get_strategy_for_provider
 from src.transfer.ftp_manager import FtpManager
 from src.transfer.sftp_manager import SftpManager
-from src.utils.local_menus import Chapter1
+from src.utils.local_menus import FtpProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -15,52 +16,48 @@ def process_provider_transfer(provider: EdiPartners):
     selecionando o manager de conexão e a estratégia de transferência apropriados.
     """
     provider_id = provider.provider
-    protocol_code = str(provider.protocol)
 
-    logger.info(f"A iniciar processamento para o fornecedor: {provider_id} com código de protocolo: '{protocol_code}'")
+    try:
+        # Converte o valor inteiro do banco de dados para um membro do Enum
+        protocol_code = FtpProtocol(provider.protocol)
+    except ValueError:
+        logger.error(f'Fornecedor {provider_id} tem um código de protocolo inválido: {provider.protocol}')
+        return
 
-    # Mapeamento do código do protocolo (vindo do DB) para a classe Manager.
-    # Isto torna o código mais explícito e fácil de entender.
+    logger.info(f"A iniciar processamento para o fornecedor: {provider_id} com protocolo: '{protocol_code.name}'")
+
     manager_map = {
-        '1': FtpManager,  # Supondo que 1 = FTP
-        '2': SftpManager,  # Supondo que 2 = SFTP
+        FtpProtocol.FTP: FtpManager,
+        FtpProtocol.SFTP: SftpManager,
     }
 
     ManagerClass = manager_map.get(protocol_code)
 
     if not ManagerClass:
-        logger.error(
-            (
-                f"Protocolo '{protocol_code}' desconhecido ou não suportado para o fornecedor "
-                f'{provider_id}. A saltar processamento.'
-            )
-        )
+        logger.error(f'Nenhum Manager encontrado para o protocolo {protocol_code.name}')
         return
 
-    extra_params = {}
-
-    if ManagerClass is SftpManager and provider.private_key_folder:
-        extra_params['private_key'] = provider.private_key_folder
-
-    if ManagerClass is FtpManager and provider.binary_mode == Chapter1.YES:
-        extra_params['binary_mode'] = True
-
     try:
+        if ManagerClass == FtpManager:
+            # Configuração específica para FTP
+            # is_binary = provider.binary_mode == YesNo.YES
+            is_binary = True
+
+            conn_config = FtpConfig(
+                host=provider.url,
+                user=provider.username,
+                password=provider.password,
+                binary_mode=is_binary,
+                encoding='latin-1',
+            )
+
         # 1. Obter a classe de estratégia correta para este fornecedor.
         #    A função `get_strategy_for_provider` decide se usa a base ou uma personalizada.
         StrategyClass = get_strategy_for_provider(provider)
 
         # 2. Iniciar o manager de conexão (FTP ou SFTP) usando um context manager.
         #    Isto garante que a conexão é sempre fechada corretamente.
-        default_port = None
-
-        with ManagerClass(
-            host=provider.url,
-            port=default_port,
-            user=provider.username,
-            password=provider.password,
-            **extra_params,
-        ) as manager:
+        with ManagerClass(config=conn_config) as manager:
             # 3. Instanciar a estratégia, passando o manager (já conectado) e a configuração do fornecedor.
             strategy_instance = StrategyClass(manager, provider)
 

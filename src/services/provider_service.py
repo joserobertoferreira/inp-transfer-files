@@ -2,7 +2,7 @@ import logging
 
 from src.database.database import db
 from src.models.models import EdiPartners
-from src.utils.local_menus import Chapter1
+from src.utils.local_menus import YesNo
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +19,8 @@ def get_active_providers() -> list[EdiPartners]:
             providers = (
                 session.query(EdiPartners)
                 .filter(
-                    EdiPartners.is_active == Chapter1.YES,
-                    EdiPartners.use_ftp == Chapter1.YES,
+                    EdiPartners.is_active == YesNo.YES,
+                    EdiPartners.use_ftp == YesNo.YES,
                 )
                 .all()
             )

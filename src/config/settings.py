@@ -30,7 +30,7 @@ LOG_ERROR_FILENAME = 'app_error.log'
 LOG_ERROR_FILE_LEVEL = 'ERROR'
 
 # SFTP settings
-STANDARD_FOLDER = str(config('STANDARD_FOLDER', default='/caminho/padrao/se/nao/definido'))
+STANDARD_FOLDER = str(config('STANDARD_FOLDER', default='logs/ftp'))
 
 # Sage X3 database table settings
 DEFAULT_LEGACY_DATE = date(1753, 1, 1)
