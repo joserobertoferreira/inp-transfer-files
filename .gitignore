@@ -5,7 +5,8 @@ build/
 dist/
 wheels/
 *.egg-info
-logs/
+logs/**
+!logs/.gitkeep
 
 # Virtual environments
 .venv
