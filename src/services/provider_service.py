@@ -1,26 +1,26 @@
 import logging
 
 from src.database.database import db
-from src.models.models import EdiPartners
+from src.models.edi_partner import EdiPartner
 from src.utils.local_menus import YesNo
 
 logger = logging.getLogger(__name__)
 
 
-def get_active_providers() -> list[EdiPartners]:
+def get_active_providers() -> list[EdiPartner]:
     """
     Busca no banco de dados a lista de fornecedores ativos usando o ORM.
-    Retorna uma lista de objetos EdiPartners.
+    Retorna uma lista de objetos EdiPartner.
     """
     logger.info('A buscar configurações de fornecedores ativos via ORM...')
     try:
         # Usamos o context manager para obter uma sessão segura
         with db.get_db() as session:
             providers = (
-                session.query(EdiPartners)
+                session.query(EdiPartner)
                 .filter(
-                    EdiPartners.is_active == YesNo.YES,
-                    EdiPartners.use_ftp == YesNo.YES,
+                    EdiPartner.is_active == YesNo.YES,
+                    EdiPartner.use_ftp == YesNo.YES,
                 )
                 .all()
             )

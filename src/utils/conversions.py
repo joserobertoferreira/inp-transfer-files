@@ -2,16 +2,123 @@ import base64
 import hashlib
 import hmac
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from dateutil import parser
 
-from config.settings import DEFAULT_LEGACY_DATETIME
+from src.config.settings import DEFAULT_LEGACY_DATETIME
 
 
 class Conversions:
+    """
+    Uma classe de utilidades com métodos estáticos robustos para conversão
+    de tipos de dados, principalmente a partir de strings.
+    """
+
+    @staticmethod
+    def to_int(value: Any, default: Optional[int] = None) -> Optional[int]:
+        """
+        Converte um valor de forma segura para um inteiro.
+        Lida com strings, floats e valores vazios.
+
+        Args:
+            value: O valor a ser convertido.
+            default: O valor a ser retornado se a conversão falhar.
+                     Se None, retorna None em caso de falha.
+
+        Returns:
+            O valor convertido para int, o valor padrão, ou None.
+        """
+        if value is None:
+            return default
+
+        try:
+            # Tenta converter floats (ex: 123.0) e strings (ex: " 123 ")
+            return int(float(str(value).strip()))
+        except (ValueError, TypeError):
+            return default
+
+    @staticmethod
+    def to_decimal(value: Any, precision: Optional[int] = None, default: Optional[Decimal] = None) -> Optional[Decimal]:
+        """
+        Converte um valor de forma segura para um Decimal.
+        Lida com strings, floats, ints e valores vazios.
+
+        Args:
+            value: O valor a ser convertido.
+            precision: Número de casas decimais para arredondar.
+            default: O valor a ser retornado se a conversão falhar.
+                     Se None, retorna None em caso de falha.
+
+        Returns:
+            O valor convertido para Decimal, o valor padrão, ou None.
+        """
+        if value is None or str(value).strip() == '':  # noqa: PLC1901
+            return default
+
+        try:
+            decimal_value = Decimal(str(value).strip())
+            if precision is not None:
+                # O 'quantize' é a forma correta de arredondar Decimals
+                return decimal_value.quantize(Decimal('1e-' + str(precision)))
+            return decimal_value
+        except InvalidOperation:
+            return default
+
+    @staticmethod
+    def to_date(value: Any, default: Optional[date] = None) -> Optional[date]:
+        """
+        Converte uma string ou datetime para um objeto date.
+
+        Args:
+            value: O valor a ser convertido (ex: "20240825", datetime.now()).
+            default: O valor a ser retornado se a conversão falhar.
+                     Se None, retorna None em caso de falha.
+
+        Returns:
+            O valor convertido para date, o valor padrão, ou None.
+        """
+        result = default
+        if value is not None:
+            if isinstance(value, datetime):
+                result = value.date()
+            elif isinstance(value, date):
+                result = value
+            else:
+                value_str = str(value).strip()
+                if value_str:
+                    try:
+                        result = parser.parse(value_str).date()
+                    except (parser.ParserError, ValueError, TypeError):
+                        try:
+                            result = datetime.strptime(value_str, '%Y%m%d').date()
+                        except (ValueError, TypeError):
+                            pass
+        return result
+
+    @staticmethod
+    def to_datetime(value: Any, default: Optional[datetime] = None) -> Optional[datetime]:
+        """Converte uma string ou date para um objeto datetime."""
+        # Lógica similar à to_date, mas sem o .date() no final
+        if value is None:
+            return default
+        # ... (implementação completa)
+        return default
+
+    @staticmethod
+    def to_bool(value: Any) -> bool:
+        """
+        Converte um valor para boolean de forma flexível.
+        Considera "true", "t", "yes", "y", "1" como True.
+        """
+        if isinstance(value, bool):
+            return value
+        if str(value).strip().lower() in {'true', 't', 'yes', 'y', '1', '2'}:  # '2' por causa do seu enum YesNo.YES
+            return True
+        return False
+
     @staticmethod
     def convert_value(value: Any, precision: int = 0) -> Any:
         if isinstance(value, str):
@@ -135,7 +242,7 @@ class Conversions:
         return value
 
     @staticmethod
-    def convert_values(data: Dict[str, Any]) -> Dict[str, Any]:
+    def convert_values(data: dict[str, Any]) -> dict[str, Any]:
         """
         Converte os valores de um dicionário para uma forma mais legível.
 

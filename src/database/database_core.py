@@ -4,22 +4,23 @@ from typing import Any, Mapping, Optional, Tuple, Union
 from sqlalchemy import text
 from sqlalchemy.engine import Result
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
-from config.settings import SCHEMA
-from utils.conversions import Conversions
-from utils.local_menus import Chapter1
-
-from .condition import Condition
-from .database import DatabaseManager
+from src.config.settings import SCHEMA
+from src.database.condition import Condition
+from src.utils.conversions import Conversions
+from src.utils.local_menus import YesNo
 
 logger = logging.getLogger(__name__)
 
 
 class DatabaseCoreManager:
-    def __init__(self, db_manager: 'DatabaseManager'):
-        if not db_manager:
-            raise ValueError('DatabaseManager instance is required.')
-        self.db_manager = db_manager
+    def __init__(self, session: Session):
+        if not session:
+            raise ValueError('Active SQLAlchemy Session instance is required.')
+        self.session = session
+        # Obtém a conexão subjacente da sessão para execução
+        self.connection = session.connection()
         self.schema = SCHEMA
 
     def _build_sql_params_for_where(  # noqa: PLR6301
@@ -44,7 +45,7 @@ class DatabaseCoreManager:
             if isinstance(condition_obj, Condition):
                 operator = condition_obj.operator
                 value = condition_obj.value
-            elif isinstance(condition_obj, tuple) and len(condition_obj) == Chapter1.YES:
+            elif isinstance(condition_obj, tuple) and len(condition_obj) == YesNo.YES:
                 # Esta parte do Union é usada por execute_query
                 operator = condition_obj[0].upper()
                 value = condition_obj[1]
@@ -148,40 +149,39 @@ class DatabaseCoreManager:
         logger.debug(f'Executing query: {query_string} with params: {final_sql_params}')
 
         try:
-            with self.db_manager.get_db() as session:
-                connection = session.connection()
-                result: Result = connection.execute(text(query_string), final_sql_params)
+            result: Result = self.connection.execute(text(query_string), final_sql_params)
 
-                # For SELECT, it's good practice to not commit or rollback unless there's a specific reason.
-                # SQLAlchemy sessions often don't require explicit commit for SELECTs on their own.
-                # The context manager will close the session properly.
+            # For SELECT, it's good practice to not commit or rollback unless there's a specific reason.
+            # SQLAlchemy sessions often don't require explicit commit for SELECTs on their own.
+            # The context manager will close the session properly.
 
-                column_names = list(result.keys())
-                # `mappings().all()` returns a list of RowMapping objects (dict-like)
-                fetched_data = [dict(row) for row in result.mappings().all()]
+            column_names = list(result.keys())
+            # `mappings().all()` returns a list of RowMapping objects (dict-like)
+            fetched_data = [dict(row) for row in result.mappings().all()]
 
-                if not fetched_data:
-                    return {
-                        'status': 'success',
-                        'message': 'No results found',
-                        'columns': column_names,
-                        'records': 0,
-                        'data': [],
-                    }
-
+            if not fetched_data:
                 return {
                     'status': 'success',
-                    'message': 'Query executed successfully',
+                    'message': 'No results found',
                     'columns': column_names,
-                    'records': len(fetched_data),
-                    'data': fetched_data,
+                    'records': 0,
+                    'data': [],
                 }
+
+            return {
+                'status': 'success',
+                'message': 'Query executed successfully',
+                'columns': column_names,
+                'records': len(fetched_data),
+                'data': fetched_data,
+            }
         except SQLAlchemyError as e:
             logger.error(f'SQLAlchemyError executing query: {e}', exc_info=True)
-            return {'status': 'error', 'message': f'Error executing query: {e}', 'data': None}
+            raise
         except Exception as e:
             logger.error(f'Unexpected error executing query: {e}', exc_info=True)
-            return {'status': 'error', 'message': f'Unexpected error: {e}', 'data': None}
+            raise
+            # return {'status': 'error', 'message': f'Unexpected error: {e}', 'data': None}
 
     def execute_dml(self, sql_query: str, params: dict[str, Any]) -> dict[str, Any]:
         """
@@ -190,28 +190,19 @@ class DatabaseCoreManager:
         """
         logger.debug(f'Executing DML: {sql_query} with params: {params}')
         try:
-            with self.db_manager.get_db() as session:
-                connection = session.connection()
-                result: Result = connection.execute(text(sql_query), params)
-                # `rowcount` gives the number of rows affected by an UPDATE or DELETE.
-                # For INSERT, it's often 1 per row (driver-dependent).
-                # Not all drivers/DBs support rowcount reliably for all statements.
-                affected_rows = result.rowcount
+            result: Result = self.connection.execute(text(sql_query), params)
+            # `rowcount` gives the number of rows affected by an UPDATE or DELETE.
+            # For INSERT, it's often 1 per row (driver-dependent).
+            # Not all drivers/DBs support rowcount reliably for all statements.
+            affected_rows = result.rowcount
 
-                # Commit a transação através do gerenciador de sessão do DatabaseManager
-                self.db_manager.commit_rollback(session)  # Handles commit and rollback on error
-
-                return {'status': 'success', 'message': 'DML executed successfully.', 'affected_rows': affected_rows}
+            return {'status': 'success', 'message': 'DML executed successfully.', 'affected_rows': affected_rows}
         except SQLAlchemyError as e:
-            # O commit_rollback no DatabaseManager já loga o erro se o commit falhar,
-            # mas podemos logar o erro da execução aqui também.
             logger.error(f'SQLAlchemyError during DML execution: {e}', exc_info=True)
-            # A exceção será propagada pelo commit_rollback se o rollback falhar,
-            # ou se o erro ocorrer antes do commit_rollback ser chamado.
-            return {'status': 'error', 'message': f'Error executing DML: {e}'}
+            raise
         except Exception as e:
             logger.error(f'Unexpected error during DML execution: {e}', exc_info=True)
-            return {'status': 'error', 'message': f'Unexpected error during DML: {e}'}
+            raise
 
     def execute_insert(
         self,

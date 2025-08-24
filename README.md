@@ -42,3 +42,4 @@ A arquitetura separa claramente as responsabilidades entre:
 Esta estrutura garante que o sistema seja fácil de manter e escalar no futuro.
 
 **[➡️ Ver a documentação técnica detalhada da Lógica de Transferência](docs/TRANSFER.md)**
+**[➡️ Ver a documentação técnica detalhada da Lógica de Agendamento](docs/SCHEDULE.md)**

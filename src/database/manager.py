@@ -1,9 +1,10 @@
 import logging
 from typing import Any, Optional
 
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Connection, Engine
+from sqlalchemy import Engine, create_engine, text
+from sqlalchemy.engine import Connection
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session, sessionmaker
 
 from src.config import settings
 
@@ -13,7 +14,9 @@ logger = logging.getLogger(__name__)
 
 class DatabaseManager:
     """
-    Gerencia a conexão e as operações com o banco de dados SQL Server.
+    Manages the database engine and provides both an ORM Session and a raw Connection.
+    The session is managed within a transaction (commit/rollback).
+    The connection is provided for direct query execution.
     """
 
     def __init__(self):
@@ -26,34 +29,61 @@ class DatabaseManager:
             f'{settings.SERVER}:{settings.PORT}/'
             f'{settings.DATABASE}'
         )
-        self.engine: Optional[Engine] = None
+        self.engine: Engine = create_engine(self.db_uri, echo=settings.DEBUG)  # 'echo' é útil para debug
+
+        # Cria uma "fábrica" de sessions ligada ao engine
+        self._SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+
+        self.session: Optional[Session] = None
         self.connection: Optional[Connection] = None
 
     def __enter__(self):
-        """Cria o engine e abre uma conexão."""
+        """
+        Abre uma conexão e uma sessão ORM.
+        """
         try:
-            logging.info('Criar engine e abrir conexão...')
-            self.engine = create_engine(self.db_uri)
+            # Obtém uma conexão do pool
             self.connection = self.engine.connect()
-            logging.info('Conexão com o banco de dados estabelecida.')
+            logger.info('Raw database connection opened.')
+
+            # Cria uma sessão ORM a partir da conexão.
+            # Isto garante que a sessão e a conexão participam da mesma transação.
+            self.session = self._SessionLocal(bind=self.connection)
+            logger.info('ORM session opened.')
+
             return self
-        except SQLAlchemyError as ex:
-            logging.error(f'Erro ao conectar ao banco de dados via SQLAlchemy: {ex}')
+        except SQLAlchemyError:
+            logger.critical('Failed to create database session or connection.', exc_info=True)
+            # Garante que limpamos tudo em caso de falha na inicialização
+            self.__exit__(SQLAlchemyError, None, None)
             raise
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Fecha a conexão e dispõe do engine."""
+        """
+        Faz commit/rollback na sessão e fecha tanto a sessão como a conexão.
+        """
+        if self.session:
+            try:
+                if exc_type is not None:
+                    logger.warning('An exception occurred in the with-block. Rolling back ORM session.')
+                    self.session.rollback()
+                else:
+                    logger.info('Committing ORM session.')
+                    self.session.commit()
+            except SQLAlchemyError:
+                logger.error('Error during ORM session commit/rollback.', exc_info=True)
+                self.session.rollback()
+            finally:
+                self.session.close()
+                logger.info('ORM session closed.')
+
         if self.connection:
             self.connection.close()
-            logging.info('Conexão fechada.')
-
-        if self.engine:
-            self.engine.dispose()
-            logging.info('Engine disposed.')
+            logger.info('Raw database connection closed.')
 
     def fetch_data(self, query_base: str, params: Optional[dict[str, Any]] = None) -> list[dict[str, Any]]:
         """
-        Executa uma query e retorna os resultados como uma lista de dicionários.
+        Executa uma query "crua" e retorna os resultados como uma lista de dicionários.
         """
         if not self.connection:
             logging.error('Nenhuma conexão com o banco de dados ativa.')

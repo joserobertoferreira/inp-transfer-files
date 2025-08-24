@@ -40,18 +40,19 @@ class DatabaseManager:
             logger.error('SessionLocal is not initialized.')
             raise RuntimeError('Erro ao conectar ao banco de dados. Verifique os logs.')
 
-        db_session: Optional[Session] = None
+        db_session: Optional[Session] = self.SessionLocal()
         try:
-            db_session = self.SessionLocal()
-            logger.debug(f'Sessão de banco de dados {id(db_session)} criada e sendo fornecida.')
+            logger.debug(f'Sessão de banco de dados {id(db_session)} criada e fornecida.')
             yield db_session
-        except Exception as e:  # Captura exceções dentro do bloco 'with' que usa esta sessão
-            logger.error(f'Exceção dentro do contexto da sessão de banco de dados {id(db_session)}: {e}', exc_info=True)
+            db_session.commit()
+            logger.debug(f'Sessão {id(db_session)} commitada com sucesso.')
+        except Exception:  # Captura exceções dentro do bloco 'with' que usa esta sessão
+            logger.error(f'Exceção no contexto da sessão {id(db_session)}. Executar rollback...', exc_info=True)
+            db_session.rollback()
             raise
         finally:
-            if db_session:
-                logger.debug(f'Fechando sessão de banco de dados {id(db_session)}.')
-                db_session.close()
+            logger.debug(f'Fechar sessão do banco de dados {id(db_session)}.')
+            db_session.close()
 
     def commit_rollback(self, session: Session):  # noqa: PLR6301
         """Commits the session or rolls back in case of an error."""

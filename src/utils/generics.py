@@ -1,5 +1,6 @@
 import logging
 import platform
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import engine
@@ -76,3 +77,25 @@ class Generics:
 
         logger.info(f'String de conexão criada: {conn_str}')
         return conn_str
+
+    @staticmethod
+    def get_year_and_iso_week() -> str:
+        """
+        Returns the current year and ISO week number in the format ISO 8601 (YYYY_WK).
+        Example: '2024_03' for the third week of 2024.
+        """
+
+        # Get the current date and time
+        today = datetime.now()
+
+        # .isocalendar() returns a tuple (year, week, weekday)
+        iso_calendar = today.isocalendar()
+
+        # Extract the year and week
+        iso_year = iso_calendar.year
+        iso_week = iso_calendar.week
+
+        # Format the output string.
+        # The '02' in the f-string ensures that the week number is always two digits
+        # (ex: 01, 02, ..., 10, 11).
+        return f'{iso_year}_{iso_week:02}'

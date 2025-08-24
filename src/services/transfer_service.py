@@ -1,7 +1,7 @@
 import logging
 
 from src.config.connection_ftp import FtpConfig
-from src.models.models import EdiPartners
+from src.models.edi_partner import EdiPartner
 from src.services.strategies import get_strategy_for_provider
 from src.transfer.ftp_manager import FtpManager
 from src.transfer.sftp_manager import SftpManager
@@ -10,7 +10,7 @@ from src.utils.local_menus import FtpProtocol
 logger = logging.getLogger(__name__)
 
 
-def process_provider_transfer(provider: EdiPartners):
+def process_provider_transfer(provider: EdiPartner):
     """
     Orquestra a transferência de ficheiros para um único fornecedor,
     selecionando o manager de conexão e a estratégia de transferência apropriados.
@@ -54,6 +54,10 @@ def process_provider_transfer(provider: EdiPartners):
         # 1. Obter a classe de estratégia correta para este fornecedor.
         #    A função `get_strategy_for_provider` decide se usa a base ou uma personalizada.
         StrategyClass = get_strategy_for_provider(provider)
+
+        if StrategyClass.__name__ == 'BaseTransferStrategy':
+            logger.info('Não processar se for uma estratégia genérica.')
+            return
 
         # 2. Iniciar o manager de conexão (FTP ou SFTP) usando um context manager.
         #    Isto garante que a conexão é sempre fechada corretamente.

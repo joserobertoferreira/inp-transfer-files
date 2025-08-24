@@ -1,5 +1,5 @@
 import datetime
-import decimal
+from decimal import Decimal
 
 from sqlalchemy import (
     DateTime,
@@ -16,11 +16,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 from src.config.settings import DEFAULT_LEGACY_DATETIME, SCHEMA, STANDARD_FOLDER
 from src.database.base import Base
 from src.models.generics_mixins import ArrayColumnMixin
+from src.models.mixins import AuditMixin, PrimaryKeyMixin
 
-from .mixins import AuditMixin, PrimaryKeyMixin
 
-
-class EdiPartners(Base, PrimaryKeyMixin, AuditMixin, ArrayColumnMixin):
+class EdiPartner(Base, PrimaryKeyMixin, AuditMixin, ArrayColumnMixin):
     __tablename__ = 'ZEDIPAR'
     __table_args__ = (
         PrimaryKeyConstraint('ROWID', name='ZEDIPAR_ROWID'),
@@ -47,6 +46,8 @@ class EdiPartners(Base, PrimaryKeyMixin, AuditMixin, ArrayColumnMixin):
     private_key_folder: Mapped[str] = mapped_column('FTPFIC_0', Unicode(150, 'Latin1_General_BIN2'), default=text("''"))
     export_process: Mapped[int] = mapped_column('FTPEXP_0', TINYINT, default=text('((1))'))
     one_execution: Mapped[int] = mapped_column('FTPUNI_0', TINYINT, default=text('((1))'))
+    process_frequency: Mapped[int] = mapped_column('FTPFRQ_0', TINYINT, default=text('((0))'))
+
     _local_input_folder: Mapped[str] = mapped_column(
         'DRTINP_0', Unicode(120, 'Latin1_General_BIN2'), default=text("''")
     )
@@ -302,7 +303,7 @@ class EdiPartners(Base, PrimaryKeyMixin, AuditMixin, ArrayColumnMixin):
     excel: Mapped[int] = mapped_column('FLGXLS_0', TINYINT, default=text('((1))'))
     packing_list: Mapped[int] = mapped_column('FLGPAC_0', TINYINT, default=text('((1))'))
     is_colored: Mapped[int] = mapped_column('COLOR_0', TINYINT, default=text('((1))'))
-    supplier_discount: Mapped[decimal.Decimal] = mapped_column('DSCBPS_0', Numeric(10, 3), default=text('((0))'))
+    supplier_discount: Mapped[Decimal] = mapped_column('DSCBPS_0', Numeric(10, 3), default=text('((0))'))
 
     @property
     def local_input_folder(self) -> str:
